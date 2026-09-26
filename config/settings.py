@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # local apps
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -63,6 +65,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+
+# Custom user model with a role column (see accounts/models.py).
+AUTH_USER_MODEL = "accounts.User"
 
 
 # Database: PostgreSQL only (no SQLite fallback, so dev matches prod).
