@@ -3,6 +3,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from bookings.cache import get_slot_list, set_slot_list
 from bookings.models import Booking, Slot
 from bookings.serializers import (
     BookingCreateSerializer,
@@ -20,6 +21,7 @@ class SlotViewSet(viewsets.ModelViewSet):
     themselves. A provider can delete their own never-booked slot.
 
     Filters: ?provider=<id>  ?available=true
+    The list is cached in Redis (see bookings/cache.py).
     """
 
     serializer_class = SlotSerializer
@@ -41,6 +43,15 @@ class SlotViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get("available") == "true":
             qs = qs.filter(is_available=True)
         return qs
+
+    def list(self, request, *args, **kwargs):
+        key, cached = get_slot_list(request.query_params)
+        if cached is not None:
+            return Response(cached, headers={"X-Cache": "HIT"})
+        response = super().list(request, *args, **kwargs)
+        set_slot_list(key, response.data)
+        response["X-Cache"] = "MISS"
+        return response
 
     def perform_create(self, serializer):
         slot = serializer.save(provider=self.request.user)

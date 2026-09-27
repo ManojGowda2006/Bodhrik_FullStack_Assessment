@@ -138,7 +138,7 @@ SIMPLE_JWT = {
 }
 
 
-# Redis: backs the RQ job queue (summaries) and, later, the cache.
+# Redis: backs the RQ job queue (summaries) and the cache (slot list).
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
@@ -146,5 +146,15 @@ RQ_QUEUES = {
     "default": {
         "URL": REDIS_URL,
         "DEFAULT_TIMEOUT": 300,  # seconds a job may run before RQ kills it
+    },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "KEY_PREFIX": "cache",  # keeps cache keys apart from RQ's rq:* keys
+        # Fail fast: a hung Redis must not hang requests (reads fall back to DB).
+        "OPTIONS": {"socket_connect_timeout": 1, "socket_timeout": 1},
     },
 }
