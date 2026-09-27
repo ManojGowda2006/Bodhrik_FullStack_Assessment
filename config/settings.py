@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "rest_framework",
     # local apps
     "accounts",
+    "bookings",
 ]
 
 MIDDLEWARE = [
