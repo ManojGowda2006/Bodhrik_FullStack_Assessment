@@ -36,9 +36,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # third party
     "rest_framework",
+    "django_rq",
     # local apps
     "accounts",
     "bookings",
+    "summaries",
 ]
 
 MIDDLEWARE = [
@@ -133,4 +135,16 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.environ.get("JWT_ACCESS_MINUTES", "30"))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
+
+
+# Redis: backs the RQ job queue (summaries) and, later, the cache.
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+RQ_QUEUES = {
+    "default": {
+        "URL": REDIS_URL,
+        "DEFAULT_TIMEOUT": 300,  # seconds a job may run before RQ kills it
+    },
 }
