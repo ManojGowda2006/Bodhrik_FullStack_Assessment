@@ -1,10 +1,17 @@
 from django.db.models import Exists, OuterRef
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from accounts.permissions import IsProvider
+from accounts.permissions import IsAdminRole, IsCustomer, IsProvider
 from bookings.models import Booking, Slot
-from bookings.serializers import SlotSerializer
+from bookings.serializers import (
+    BookingCreateSerializer,
+    BookingSerializer,
+    BookingStatusSerializer,
+    ReviewSerializer,
+    SlotSerializer,
+)
 
 
 class SlotViewSet(viewsets.ModelViewSet):
@@ -54,3 +61,65 @@ class SlotViewSet(viewsets.ModelViewSet):
             )
         slot.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BookingViewSet(viewsets.ModelViewSet):
+    """
+    CRUD on bookings. Two layers of access control:
+
+    1. Role (permission classes, 403): who may call each action.
+       create -> customer, destroy -> admin, review -> customer,
+       list / retrieve / partial_update -> any logged-in user.
+    2. Rows (get_queryset, 404): every action only ever sees
+       Booking.objects.visible_to(user), so a provider can't read
+       another provider's bookings and a customer only sees their own.
+
+    Status changes (PATCH) are limited per role by Booking.TRANSITIONS.
+    Customers cancel with PATCH; DELETE is an admin-only hard delete.
+    """
+
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def get_permissions(self):
+        if self.action in ("create", "review"):
+            return [IsCustomer()]
+        if self.action == "destroy":
+            return [IsAdminRole()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        qs = Booking.objects.visible_to(self.request.user).select_related("slot", "review")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return BookingCreateSerializer
+        if self.action == "partial_update":
+            return BookingStatusSerializer
+        return BookingSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = serializer.save()
+        return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        booking = self.get_object()
+        serializer = self.get_serializer(booking, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(BookingSerializer(booking).data)
+
+    @action(detail=True, methods=["post"])
+    def review(self, request, pk=None):
+        # IsCustomer + visible_to() mean this is always the caller's own booking;
+        # anyone else's is a 404.
+        booking = self.get_object()
+        serializer = ReviewSerializer(data=request.data, context={"booking": booking})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(booking=booking)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
