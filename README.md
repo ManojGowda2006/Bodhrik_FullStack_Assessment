@@ -15,6 +15,7 @@ The design reasoning (schema, RBAC, production gaps) is in **[NOTE.md](NOTE.md)*
 | Database | PostgreSQL 16 |
 | Queue + cache | Redis 7 with django-rq (queue) and Django's Redis cache backend |
 | Runtime | Docker Compose: `web` (gunicorn), `worker` (rqworker), `db`, `redis` |
+| API docs | drf-spectacular (OpenAPI schema + Swagger UI) |
 | Quality | pytest, ruff, GitHub Actions (lint, tests, smoke test) |
 
 ## Run it
@@ -43,6 +44,16 @@ scripts/smoke_test.sh
 
 Stop with `docker compose down` (add `-v` to delete the database).
 
+## API docs (Swagger UI)
+
+Open **http://localhost:8000/api/docs/** for interactive docs of every endpoint:
+
+1. Expand `POST /api/auth/register/`, click **Try it out**, and create a user.
+2. Use `POST /api/auth/token/` to log in and copy the `access` token.
+3. Click **Authorize** at the top, paste the token, and try any endpoint.
+
+The raw OpenAPI schema is at `/api/schema/`. The Django admin at `/admin/` shows all data.
+
 ## Try the API
 
 ```bash
@@ -67,6 +78,7 @@ curl $API/slots/ -H "Authorization: Bearer <access token>"
 | Method | Path | Who | Notes |
 |---|---|---|---|
 | GET | `/api/health/` | public | DB check, used by healthchecks |
+| GET | `/api/docs/`, `/api/schema/` | public | Swagger UI and OpenAPI schema |
 | POST | `/api/auth/register/` | public | role `provider` or `customer` |
 | POST | `/api/auth/token/` | public | login; `/token/refresh/` for a new access token |
 | GET | `/api/auth/me/` | any user | current user |
@@ -115,7 +127,7 @@ ruff check . && ruff format --check .
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on every PR and push to `main`:
 
 1. **Lint**: ruff.
-2. **Tests**: pytest with Postgres and Redis service containers, plus a check for uncommitted migrations.
+2. **Tests**: pytest with Postgres and Redis service containers, plus checks for uncommitted migrations and a valid API schema.
 3. **Smoke test**: builds the real stack with Docker Compose and runs `scripts/smoke_test.sh` against it.
 
 ## Project layout

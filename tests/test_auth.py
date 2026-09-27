@@ -73,3 +73,10 @@ def test_invalid_token_rejected_by_middleware(client_for):
 def test_createsuperuser_gets_admin_role():
     user = User.objects.create_superuser("root", "root@example.com", "S3cure-pass!")
     assert user.role == User.Role.ADMIN and user.is_superuser
+
+
+def test_api_docs_are_public(client_for):
+    assert client_for().get("/api/docs/").status_code == 200
+    schema = client_for().get("/api/schema/")
+    assert schema.status_code == 200
+    assert b"/api/bookings/" in schema.content

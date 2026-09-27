@@ -16,7 +16,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 # URL names that need no token.
-PUBLIC_ROUTES = {"health", "register", "token", "token-refresh"}
+PUBLIC_ROUTES = {"health", "register", "token", "token-refresh", "schema", "swagger-ui"}
 
 # (URL name, HTTP method) -> roles allowed to call it.
 # Any /api/ route not listed is open to every authenticated user, and its

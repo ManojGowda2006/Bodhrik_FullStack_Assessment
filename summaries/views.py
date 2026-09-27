@@ -1,6 +1,7 @@
 import django_rq
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,6 +30,7 @@ class SummariseView(APIView):
     already rejected every other role).
     """
 
+    @extend_schema(request=None, responses={202: ReviewSummarySerializer})
     def post(self, request, provider_id):
         user = request.user
         if user.is_provider and user.id != provider_id:
@@ -73,4 +75,6 @@ class ReviewSummaryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ReviewSummarySerializer
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # API docs generation, no real user
+            return ReviewSummary.objects.none()
         return summaries_visible_to(self.request.user)

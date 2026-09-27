@@ -1,4 +1,5 @@
 from django.db.models import Exists, OuterRef
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -28,6 +29,8 @@ class SlotViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # API docs generation, no real user
+            return Slot.objects.none()
         active_booking = Booking.objects.filter(slot=OuterRef("pk")).exclude(
             status=Booking.Status.CANCELLED
         )
@@ -86,6 +89,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # API docs generation, no real user
+            return Booking.objects.none()
         qs = Booking.objects.visible_to(self.request.user).select_related("slot", "review")
         status_filter = self.request.query_params.get("status")
         if status_filter:
@@ -99,12 +104,14 @@ class BookingViewSet(viewsets.ModelViewSet):
             return BookingStatusSerializer
         return BookingSerializer
 
+    @extend_schema(request=BookingCreateSerializer, responses={201: BookingSerializer})
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         booking = serializer.save()
         return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=BookingStatusSerializer, responses=BookingSerializer)
     def partial_update(self, request, *args, **kwargs):
         booking = self.get_object()
         serializer = self.get_serializer(booking, data=request.data, partial=True)
@@ -112,6 +119,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer.save()
         return Response(BookingSerializer(booking).data)
 
+    @extend_schema(request=ReviewSerializer, responses={201: ReviewSerializer})
     @action(detail=True, methods=["post"])
     def review(self, request, pk=None):
         # Middleware allows only customers here, and visible_to() limits a
