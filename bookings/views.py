@@ -1,9 +1,8 @@
 from django.db.models import Exists, OuterRef
-from rest_framework import permissions, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from accounts.permissions import IsAdminRole, IsCustomer, IsProvider
 from bookings.models import Booking, Slot
 from bookings.serializers import (
     BookingCreateSerializer,
@@ -17,19 +16,14 @@ from bookings.serializers import (
 class SlotViewSet(viewsets.ModelViewSet):
     """
     Any logged-in user can browse slots (customers need to, to book).
-    Only providers create slots, and only for themselves.
-    A provider can delete their own slot while it has never been booked.
+    Only providers create slots (enforced by RBACMiddleware), always for
+    themselves. A provider can delete their own never-booked slot.
 
     Filters: ?provider=<id>  ?available=true
     """
 
     serializer_class = SlotSerializer
     http_method_names = ["get", "post", "delete", "head", "options"]
-
-    def get_permissions(self):
-        if self.action in ("create", "destroy"):
-            return [IsProvider()]
-        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         active_booking = Booking.objects.filter(slot=OuterRef("pk")).exclude(
@@ -67,10 +61,10 @@ class BookingViewSet(viewsets.ModelViewSet):
     """
     CRUD on bookings. Two layers of access control:
 
-    1. Role (permission classes, 403): who may call each action.
+    1. Role (RBACMiddleware, 403): who may call each route.
        create -> customer, destroy -> admin, review -> customer,
        list / retrieve / partial_update -> any logged-in user.
-    2. Rows (get_queryset, 404): every action only ever sees
+    2. Rows (get_queryset here, 404): every action only ever sees
        Booking.objects.visible_to(user), so a provider can't read
        another provider's bookings and a customer only sees their own.
 
@@ -79,13 +73,6 @@ class BookingViewSet(viewsets.ModelViewSet):
     """
 
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
-
-    def get_permissions(self):
-        if self.action in ("create", "review"):
-            return [IsCustomer()]
-        if self.action == "destroy":
-            return [IsAdminRole()]
-        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         qs = Booking.objects.visible_to(self.request.user).select_related("slot", "review")
@@ -116,7 +103,8 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def review(self, request, pk=None):
-        # IsCustomer + visible_to() mean this is always the caller's own booking;
+        # Middleware allows only customers here, and visible_to() limits a
+        # customer to their own bookings, so this is always the caller's own;
         # anyone else's is a 404.
         booking = self.get_object()
         serializer = ReviewSerializer(data=request.data, context={"booking": booking})
