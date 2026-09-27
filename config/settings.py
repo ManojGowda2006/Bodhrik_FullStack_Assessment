@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "rest_framework",
     # local apps
     "accounts",
+    "bookings",
 ]
 
 MIDDLEWARE = [
@@ -48,6 +49,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # JWT authentication + role checks for every /api/ request.
+    "accounts.middleware.RBACMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -113,15 +116,18 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# REST framework: JWT auth, and every endpoint requires login unless it opts out.
+# REST framework. Authentication and role checks happen in RBACMiddleware;
+# DRF just receives the user the middleware authenticated.
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "accounts.authentication.MiddlewareUserAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny",
     ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
 SIMPLE_JWT = {
