@@ -1,5 +1,14 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import UserManager as BaseUserManager
 from django.db import models
+
+
+class UserManager(BaseUserManager):
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        # `manage.py createsuperuser` should produce an API admin too,
+        # not a Django superuser with the default customer role.
+        extra_fields.setdefault("role", User.Role.ADMIN)
+        return super().create_superuser(username, email, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -18,6 +27,8 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
+
+    objects = UserManager()
 
     class Meta:
         constraints = [
