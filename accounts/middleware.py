@@ -27,6 +27,9 @@ ROLE_POLICY = {
     ("booking-list", "POST"): {"customer"},
     ("booking-detail", "DELETE"): {"admin"},
     ("booking-review", "POST"): {"customer"},
+    ("provider-summarise", "POST"): {"admin", "provider"},
+    ("summary-list", "GET"): {"admin", "provider"},
+    ("summary-detail", "GET"): {"admin", "provider"},
 }
 
 
