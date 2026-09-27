@@ -63,6 +63,9 @@ jobs:
       # Fails if a model changed without a migration being committed.
       - name: Check for missing migrations
         run: python manage.py makemigrations --check --dry-run --settings=config.settings_test
+      # Fails if the OpenAPI schema (Swagger docs) has errors or warnings.
+      - name: Validate API schema
+        run: python manage.py spectacular --validate --fail-on-warn --file /dev/null --settings=config.settings_test
       - run: pytest -v
 
   smoke:

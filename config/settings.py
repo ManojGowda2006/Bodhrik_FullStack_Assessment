@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     # third party
     "rest_framework",
     "django_rq",
+    "drf_spectacular",
     # local apps
     "accounts",
     "bookings",
@@ -128,8 +129,26 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+}
+
+# OpenAPI schema + Swagger UI at /api/docs/
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Service Booking & Review API",
+    "DESCRIPTION": (
+        "Providers offer slots, customers book them, completed bookings can be "
+        "reviewed. Log in with POST /api/auth/token/, then click Authorize and "
+        "paste the access token."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Booking and summary both have a "status" choice field; name them apart.
+    "ENUM_NAME_OVERRIDES": {
+        "BookingStatusEnum": "bookings.models.Booking.Status",
+        "SummaryStatusEnum": "summaries.models.ReviewSummary.Status",
+    },
 }
 
 SIMPLE_JWT = {
