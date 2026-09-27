@@ -68,3 +68,8 @@ def test_invalid_token_rejected_by_middleware(client_for):
     response = client.get("/api/bookings/")
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid or expired token."
+
+
+def test_createsuperuser_gets_admin_role():
+    user = User.objects.create_superuser("root", "root@example.com", "S3cure-pass!")
+    assert user.role == User.Role.ADMIN and user.is_superuser
